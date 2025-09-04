@@ -1,198 +1,381 @@
-const Header = () => {
-    return (
-        <div className="flex flex-col h-[100vh] bg-gray-100  p-4">
-            <div className="flex justify-between items-center h-[8vh] bg-gray-100 pl-4 space-x-8">
-                <div className="flex items-center gap-2 w-[75vw] bg-white px-4 py-2 rounded shadow-sm ">
-                    <span className="text-gray-500">
-                        🔍
-                    </span>
-                    <input
-                        type="text"
-                        placeholder="Enter Github User Name"
-                        className="flex-grow placeholder:text-xl font-medium placeholder:text-gray-900"
+import { GripVertical, Trash2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import sampleImage from "./sampleImage.png";
+
+interface FieldType {
+    type: string;
+    label: string;
+}
+
+interface FormField {
+    id: string;
+    type: string;
+    label: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    required: boolean;
+    placeholder: string;
+    options: string[];
+    value?: string | boolean | string[];
+}
+
+interface FieldUpdates {
+    label?: string;
+    placeholder?: string;
+    required?: boolean;
+    options?: string[];
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    value?: string | boolean | string[];
+}
+
+const FormBuilder: React.FC = () => {
+    const [fields, setFields] = useState<FormField[]>([]);
+    const [selectedField, setSelectedField] = useState<string | null>(null);
+    const [draggedFieldType, setDraggedFieldType] = useState<FieldType | null>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
+    const fieldTypes: FieldType[] = [
+        { type: 'text', label: 'Text Input', },
+        { type: 'textarea', label: 'Text Area', },
+        { type: 'email', label: 'Email', },
+        { type: 'phone', label: 'Phone' },
+        { type: 'number', label: 'Number' },
+        { type: 'checkbox', label: 'Checkbox' },
+        { type: 'radio', label: 'Radio Button' },
+        { type: 'date', label: 'Date' },
+    ];
+    const generateId = (): string => `field_${Date.now()}`;
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, fieldType: FieldType): void => {
+        setDraggedFieldType(fieldType);
+        e.dataTransfer.effectAllowed = 'copy';
+    };
+    const handleDroponDocument = (e: React.DragEvent<HTMLDivElement>): void => {
+        e.preventDefault();
+        if (!draggedFieldType || !canvasRef.current) return;
+
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const x = e.clientX - canvasRect.left;
+        const y = e.clientY - canvasRect.top;
+        console.log(x, y, "canvasRect", canvasRect);
+
+        const newField: FormField = {
+            id: generateId(),
+            type: draggedFieldType.type,
+            label: draggedFieldType.label,
+            x: x - 33,
+            y: y,
+            width: 150,
+            height: draggedFieldType.type === 'textarea' ? 100 : 40,
+            required: false,
+            placeholder: `Enter ${draggedFieldType.label.toLowerCase()}`,
+            options: draggedFieldType.type === 'radio' ? ['Option 1', 'Option 2'] : [],
+            value: draggedFieldType.type === 'checkbox' ? false :
+                draggedFieldType.type === 'radio' ? [] : '',
+        };
+
+        setFields(prev => [...prev, newField]);
+        setSelectedField(newField.id);
+        setDraggedFieldType(null);
+    };
+    const handleFieldClick = (fieldId: string): void => {
+        console.log(fieldId, "fieldId000001");
+        setSelectedField(fieldId);
+    };
+
+    const deleteField = (fieldId: string): void => {
+        setFields(prev => prev.filter(f => f.id !== fieldId));
+        if (selectedField === fieldId) {
+            setSelectedField(null);
+        }
+    };
+
+    const updateField = (fieldId: string, updates: FieldUpdates): void => {
+        setFields(prev => prev.map(field =>
+            field.id === fieldId ? { ...field, ...updates } : field
+        ));
+    };
+
+    const handleFieldValueChange = (fieldId: string, value: string | boolean | string[]): void => {
+        updateField(fieldId, { value });
+    };
+
+    const handleFieldMouseDown = (e: React.MouseEvent<HTMLDivElement>, fieldId: string): void => {
+        if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
+
+        e.preventDefault();
+        setSelectedField(fieldId);
+
+        const field = fields.find(f => f.id === fieldId);
+        if (!field || !canvasRef.current) return;
+
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const startX = e.clientX - canvasRect.left - field.x;
+        const startY = e.clientY - canvasRect.top - field.y;
+
+        const handleMouseMove = (e: MouseEvent): void => {
+            if (!canvasRef.current) return;
+            const canvasRect = canvasRef.current.getBoundingClientRect();
+            const newX = Math.max(0, e.clientX - canvasRect.left - startX);
+            const newY = Math.max(0, e.clientY - canvasRect.top - startY);
+            updateField(fieldId, { x: newX, y: newY });
+        };
+
+        const handleMouseUp = (): void => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, fieldId: string): void => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const field = fields.find(f => f.id === fieldId);
+        if (!field) return;
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startWidth = field.width;
+        const startHeight = field.height;
+
+        const handleMouseMove = (e: MouseEvent): void => {
+            const newWidth = Math.max(100, startWidth + (e.clientX - startX));
+            const newHeight = Math.max(30, startHeight + (e.clientY - startY));
+            updateField(fieldId, { width: newWidth, height: newHeight });
+        };
+
+        const handleMouseUp = (): void => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const selectedFieldData = selectedField ? fields.find(f => f.id === selectedField) : null;
+
+    const renderField = (field: FormField): React.ReactNode => {
+        const commonProps = {
+            placeholder: field.placeholder,
+            className: "w-full h-full border border-gray-300 rounded px-2 py-1 text-sm ",
+            value: typeof field.value === 'string' ? field.value : '',
+            onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                handleFieldValueChange(field.id, e.target.value)
+        };
+
+        switch (field.type) {
+            case 'textarea':
+                return (
+                    <textarea
+                        {...commonProps}
+                        value={typeof field.value === 'string' ? field.value : ''}
+                        onChange={(e) => handleFieldValueChange(field.id, e.target.value)}
                     />
-                    <button className="bg-red-500 bg-red-600 text-white px-2 py-1 rounded self-center">
-                        ⋯
-                    </button>
-                    <button className="bg-teal-600  text-white px-3 py-1 rounded">
-                        Search
-                    </button>
-                </div>
+                );
+            case 'checkbox':
+                return (
+                    <label className="flex items-center text-sm cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="mr-2"
+                            checked={Boolean(field.value)}
+                            onChange={(e) => handleFieldValueChange(field.id, e.target.checked)}
+                        />
+                        {field.label}
+                    </label>
+                );
+            case 'radio':
+                return (
+                    <div className="space-y-1">
+                        {field.options.map((option: string, idx: number) => (
+                            <label key={idx} className="flex items-center text-sm cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name={field.id}
+                                    className="mr-2"
+                                    checked={Array.isArray(field.value) ? field.value.includes(option) : field.value === option}
+                                    onChange={() => handleFieldValueChange(field.id, option)}
+                                />
+                                {option}
+                            </label>
+                        ))}
+                    </div>
+                );
+            default:
+                return <input type={field.type} {...commonProps} />;
+        }
+    };
 
+    return (
+        <div className="flex h-[100vh] bg-gray-50">
+            <div className="w-64 bg-black  p-4">
+                <h2 className="text-lg font-semibold mb-4 text-gray-800">Field Types</h2>
+                <div className="space-y-2">
+                    {fieldTypes.map((fieldType) => {
 
-                <div className="text-[23px] text-gray-700 font-medium whitespace-nowrap ml-4 pr-10">
-                    Requests: 60/60
-                </div>
-
-            </div>
-
-            <div className="flex  mt-8 mr-10 space-x-4 justify-around pl-4">
-                <div className="grid grid-cols-2 bg-white rounded shadow-sm h-20  w-[24%]">
-                    <div className="flex justify-center ">
-                        <span className="flex justify-center bg-pink-100 rounded-full  h-12 self-center w-12">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6 text-pink-600 mt-3"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
+                        return (
+                            <div
+                                key={fieldType.type}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, fieldType)}
+                                className="flex items-center p-3 bg-gray-50 border border-gray-200 rounded-lg  hover:bg-gray-100 "
                             >
-                                <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div className="flex flex-col justify-center rounded leading-4 pb-2 ">
-                        <div className="text-2xl font-bold text-gray-900 tracking-tight">107</div>
-                        <div className="text-md text-gray-400 font-medium">Repos</div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 bg-white rounded shadow-sm h-20  w-[24%]">
-                    <div className="flex justify-center ">
-                        <span className="flex justify-center bg-pink-100 rounded-full  h-12 self-center w-12">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6 text-pink-600 mt-3"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                            >
-                                <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div className="flex flex-col justify-center rounded leading-4 pb-2 ">
-                        <div className="text-2xl font-bold text-gray-900 tracking-tight">107</div>
-                        <div className="text-md text-gray-400 font-medium">Repos</div>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 bg-white rounded shadow-sm h-20  w-[24%]">
-                    <div className="flex justify-center ">
-                        <span className="flex justify-center bg-pink-100 rounded-full  h-12 self-center w-12">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6 text-pink-600 mt-3"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                            >
-                                <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div className="flex flex-col justify-center rounded leading-4 pb-2 ">
-                        <div className="text-2xl font-bold text-gray-900 tracking-tight">107</div>
-                        <div className="text-md text-gray-400 font-medium">Repos</div>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 bg-white rounded shadow-sm h-20  w-[24%]">
-                    <div className="flex justify-center ">
-                        <span className="flex justify-center bg-pink-100 rounded-full  h-12 self-center w-12">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6 text-pink-600 mt-3"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                            >
-                                <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                            </svg>
-                        </span>
-                    </div>
-                    <div className="flex flex-col justify-center rounded leading-4 pb-2 ">
-                        <div className="text-2xl font-bold text-gray-900 tracking-tight">107</div>
-                        <div className="text-md text-gray-400 font-medium">Repos</div>
-                    </div>
+                                <span className="text-sm font-medium text-gray-700">{fieldType.label}</span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
-            <div className="flex mt-12 space-x-4 ml-5">
-                <div className="flex flex-col w-[47.5%] h-[45vh] bg-grey rounded  h-20  ">
-                    <div className="flex justify-center items-center w-[14%] h-[6vh] bg-white text-md text-gray-400 font-small tracking-wide">User</div>
-                    <div className="w-[100%] h-[45vh] bg-white">
-                        <div className="flex h-[30%] w-[100%]">
-                            <div className="flex w-[70%] justify-center items-center space-x-4">
-                                <div className="flex w-16 justify-start items-center h-[90%] bg-pink-100 rounded-full mt-8 ml-12"></div>
-                                <div className="mt-8">
-                                    <div className=" text-sm font-bold text-gray-900 tracking-wide w-50">Nikaolay Advolodkin</div>
-                                    <div className="text-sm text-gray-400 font-normal">@nikolay_a00</div>
-                                </div>
-                            </div>
-                            <div className="flex w-[50%] items-center justify-center mt-7 ml-6 ">
-                                <div className="border border-teal-500  rounded-full w-18 h-7 flex justify-end ml-4">
-                                    <div className="text-sm text-teal-500 font-small mt-1 mr-2.5 tracking-widest">Follow</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col space-y-2 mt-3 ml-12">
-                            <div className="text-md text-gray-600 font-medium mt-4 tracking-tight">My mission is to train 1 Million SDETs!</div>
-                            <div className="text-sm tracking-wide">
-                                <div className="flex flex-row mt-2 gap-1.5 mb-1">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="flex h-5 w-5 text-grey-200 "
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                                    </svg><span className="text-sm text-gray-500 font-medium tracking-tight">Sauce Labs</span></div>
-                                <div className="flex flex-row  gap-1.5">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="flex h-5 w-5 text-grey-200 "
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                                    </svg><span className="text-md text-gray-500 font-medium tracking-tight">Miami, FL</span></div>
-                                <div className="flex flex-row  gap-1.5">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="flex h-5 w-5 text-grey-200 "
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path d="M6 4a2 2 0 0 0-2 2v12a1 1 0 0 0 1.447.894L12 16.118l6.553 2.776A1 1 0 0 0 20 18V6a2 2 0 0 0-2-2H6z" />
-                                    </svg><span className="text-sm text-teal-400 font-small tracking-small">www.ultimateqa.com</span></div>
+            <div className="flex-1 flex flex-col ">
+                <div className="bg-white border-b border-gray-200 p-4">
+                    <h1 className="text-2xl font-bold text-gray-800">Form Builder</h1>
+                    <p className="text-gray-600 text-sm mt-1">Drag fields from the left sidebar to build your form</p>
+                </div>
 
+                <div className="flex-1 relative overflow-auto ">
+                    <div
+                        ref={canvasRef}
+                        className="relative w-[1000px] h-[calc(100vh-20px)]  bg-[url('/image2.svg')] bg-cover bg-center"
+                        onDrop={handleDroponDocument}
+                        onDragOver={(e) => e.preventDefault()}
+                        onClick={() => setSelectedField(null)}
+                    >
+
+
+
+                        <div className="" />
+
+
+                        {fields.map((field) => (
+                            <div
+                                key={field.id}
+                                className={`absolute border-2 rounded-lg p-2 cursor-move ${selectedField === field.id
+                                    ? 'border-blue-500 bg-blue-50'
+                                    : 'border-gray-300 bg-white hover:border-gray-400'
+                                    }`}
+                                style={{
+                                    left: field.x,
+                                    top: field.y,
+                                    width: field.width,
+                                    height: field.height,
+                                }}
+                                onMouseDown={(e) => handleFieldMouseDown(e, field.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFieldClick(field.id);
+                                }}
+                            >
+
+                                <div className="absolute -top-6 left-0 text-xs font-medium text-gray-600">
+                                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                                </div>
+
+                                <button
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteField(field.id);
+                                    }}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </button>
+                                <div className="w-full h-full">
+                                    {renderField(field)}
+                                </div>
+                                <div
+                                    className="resize-handle absolute bottom-0 right-0 w-2 h-2 bg-blue-300 cursor-se-resize"
+                                    onMouseDown={(e) => handleResizeMouseDown(e, field.id)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+            <div className="w-80 bg-white border-l border-gray-200 p-4">
+                <h2 className="text-lg font-semibold mb-4 text-gray-800">Properties</h2>
+
+                {selectedFieldData ? (
+                    <div className="space-y-4">
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h3 className="font-medium text-blue-800 mb-2">Selected Field</h3>
+                            <p className="text-sm text-blue-600">ID: {selectedFieldData.id}</p>
+                            <p className="text-sm text-blue-600">Type: {selectedFieldData.type}</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+                            <input
+                                type="text"
+                                value={selectedFieldData.label}
+                                onChange={(e) => updateField(selectedFieldData.id, { label: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
+                        {!['checkbox', 'radio'].includes(selectedFieldData.type) && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Placeholder</label>
+                                <input
+                                    type="text"
+                                    value={selectedFieldData.placeholder}
+                                    onChange={(e) => updateField(selectedFieldData.id, { placeholder: e.target.value })}
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                />
+                            </div>
+                        )}
+
+
+
+
+                        {/* Field Value Display */}
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <h4 className="font-medium text-gray-700 mb-2">Field Configuration</h4>
+                            <div className="text-xs text-gray-600 space-y-1">
+                                <div><strong>Key:</strong> {selectedFieldData.id}</div>
+                                <div><strong>Type:</strong> {selectedFieldData.type}</div>
+                                <div><strong>Label:</strong> {selectedFieldData.label}</div>
+                                <div><strong>Required:</strong> {selectedFieldData.required ? 'Yes' : 'No'}</div>
+                                <div><strong>Current Value:</strong> {
+                                    selectedFieldData.value === undefined ? 'Empty' :
+                                        typeof selectedFieldData.value === 'boolean' ? selectedFieldData.value.toString() :
+                                            Array.isArray(selectedFieldData.value) ? selectedFieldData.value.join(', ') :
+                                                selectedFieldData.value || 'Empty'
+                                }</div>
+                                {selectedFieldData.options.length > 0 && (
+                                    <div><strong>Options:</strong> [{selectedFieldData.options.join(', ')}]</div>
+                                )}
                             </div>
                         </div>
                     </div>
-                </div>
-                <div className="flex flex-col w-[47.5%] h-[45vh]   bg-grey rounded h-20  ">
-                    <div className="flex justify-center items-center w-[18%] h-[6vh] bg-white text-sm text-gray-400 font-small tracking-wide">Followers</div>
-                    <div className="w-[100%] h-[45vh] bg-white ">
-                        <div className="flex flex-row w-[100%] pl-7 mt-4 bg-white">
-                            <div className="bg-orange-500  rounded-full w-9 h-9 flex justify-center">
-                            </div>
-                            <div className="flex flex-col ml-3 text-sm leading-3 mt-1">
-                                <div className="font-bold text-black text-md">ThaELL1</div>
-                                <div className="text-sm font-normal text-gray-500 tracking-tight">https://github.com/ThaELL1</div>
-                            </div>
-                        </div>
-                        <div className="flex flex-row w-[100%] pl-7 mt-4 bg-white">
-                            <div className="bg-orange-500  rounded-full w-9 h-9 flex justify-center">
-                            </div>
-                            <div className="flex flex-col ml-3 text-sm leading-3 mt-1">
-                                <div className="font-bold text-black text-md">ThaELL1</div>
-                                <div className="text-sm font-normal text-gray-500 tracking-tight">https://github.com/ThaELL1</div>
-                            </div>
-                        </div>
-                        <div className="flex flex-row w-[100%] pl-7 mt-4 bg-white">
-                            <div className="bg-orange-500  rounded-full w-9 h-9 flex justify-center">
-                            </div>
-                            <div className="flex flex-col ml-3 text-sm leading-3 mt-1">
-                                <div className="font-bold text-black text-md">ThaELL1</div>
-                                <div className="text-sm font-normal text-gray-500 tracking-tight">https://github.com/ThaELL1</div>
-                            </div>
-                        </div>
-                        <div className="flex flex-row w-[100%] pl-7  mt-4 bg-white">
-                            <div className="bg-orange-500  rounded-full w-9 h-9 flex justify-center">
-                            </div>
-                            <div className="flex flex-col ml-3 text-sm leading-3 mt-1">
-                                <div className="font-bold text-black text-md">ThaELL1</div>
-                                <div className="text-sm font-normal text-gray-500 tracking-tight">https://github.com/ThaELL1</div>
-                            </div>
+                ) : (
+                    ""
+                )}
+
+                {fields.length > 0 && (
+                    <div className="mt-6">
+                        <h3 className="font-medium text-gray-700 mb-2">Form Data</h3>
+                        <div className="bg-gray-900 text-green-400 p-3 rounded-lg text-xs overflow-auto max-h-32">
+                            <pre>{JSON.stringify(fields.map(f => ({
+                                id: f.id,
+                                type: f.type,
+                                label: f.label,
+                                required: f.required,
+                                placeholder: f.placeholder,
+                                options: f.options,
+                                value: f.value
+                            })), null, 2)}</pre>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
-    )
-}
-export default Header;
+    );
+};
+
+export default FormBuilder;
