@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ViewFormIndexRouteImport } from './routes/view-form/index'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -21,29 +22,38 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ViewFormIndexRoute = ViewFormIndexRouteImport.update({
+  id: '/view-form/',
+  path: '/view-form/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/view-form': typeof ViewFormIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/view-form': typeof ViewFormIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRoute
+  '/view-form/': typeof ViewFormIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/view-form'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/' | '/_layout'
+  to: '/' | '/view-form'
+  id: '__root__' | '/' | '/_layout' | '/view-form/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRoute
+  ViewFormIndexRoute: typeof ViewFormIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -62,12 +72,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/view-form/': {
+      id: '/view-form/'
+      path: '/view-form'
+      fullPath: '/view-form'
+      preLoaderRoute: typeof ViewFormIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRoute,
+  ViewFormIndexRoute: ViewFormIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
