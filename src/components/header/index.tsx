@@ -1,5 +1,6 @@
+import { useRouter } from '@tanstack/react-router';
 import { GripVertical, Trash2 } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface FieldType {
     type: string;
@@ -35,7 +36,7 @@ const FormBuilder: React.FC = () => {
     const [selectedField, setSelectedField] = useState<string | null>(null);
     const [draggedFieldType, setDraggedFieldType] = useState<FieldType | null>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
-
+    const router = useRouter();
     const fieldTypes: FieldType[] = [
         { type: 'text', label: 'Text Input' },
         { type: 'textarea', label: 'Text Area' },
@@ -51,13 +52,13 @@ const FormBuilder: React.FC = () => {
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, fieldType: FieldType): void => {
         setDraggedFieldType(fieldType);
-        e.dataTransfer.effectAllowed = 'copy';
     };
 
     const handleDroponDocument = (e: React.DragEvent<HTMLDivElement>): void => {
         e.preventDefault();
         if (!draggedFieldType || !canvasRef.current) return;
 
+        
         const canvasRect = canvasRef.current.getBoundingClientRect();
         const x = e.clientX - canvasRect.left;
         const y = e.clientY - canvasRect.top;
@@ -237,7 +238,13 @@ const FormBuilder: React.FC = () => {
                 );
         }
     };
-
+    useEffect(() => {
+        return () => {
+            if (fields.length > 0) {
+                localStorage.setItem('fieldsData', JSON.stringify(fields));
+            }
+        }
+    }, [fields]);
     return (
         <div className="flex h-[100vh] bg-gray-50">
             <div className="w-64 bg-white border-r border-gray-200 p-4">
@@ -259,6 +266,7 @@ const FormBuilder: React.FC = () => {
             <div className="flex-1 flex flex-col">
                 <div className="bg-white border-b border-gray-200 p-4">
                     <h1 className="text-2xl font-bold text-gray-800">Form Builder</h1>
+                    <button onClick={() => router.navigate({ to: '/view-form' })}>view-form</button>
 
                 </div>
 
@@ -323,11 +331,7 @@ const FormBuilder: React.FC = () => {
 
                 {selectedFieldData ? (
                     <div className="space-y-4">
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <h3 className="font-medium text-blue-800 mb-2">Selected Field</h3>
-                            <p className="text-sm text-blue-600">ID: {selectedFieldData.id}</p>
-                            <p className="text-sm text-blue-600">Type: {selectedFieldData.type}</p>
-                        </div>
+
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
@@ -382,46 +386,13 @@ const FormBuilder: React.FC = () => {
                             </div>
                         )}
 
-                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                            <h4 className="font-medium text-gray-700 mb-2">Field Configuration</h4>
-                            <div className="text-xs text-gray-600 space-y-1">
-                                <div><strong>Key:</strong> {selectedFieldData.id}</div>
-                                <div><strong>Type:</strong> {selectedFieldData.type}</div>
-                                <div><strong>Label:</strong> {selectedFieldData.label}</div>
 
-                                <div><strong>Current Value:</strong> {
-                                    selectedFieldData.value === undefined ? 'Empty' :
-                                        typeof selectedFieldData.value === 'boolean' ? selectedFieldData.value.toString() :
-                                            Array.isArray(selectedFieldData.value) ? selectedFieldData.value.join(', ') :
-                                                selectedFieldData.value || 'Empty'
-                                }</div>
-                                {selectedFieldData.options.length > 0 && (
-                                    <div><strong>Options:</strong> [{selectedFieldData.options.join(', ')}]</div>
-                                )}
-                            </div>
-                        </div>
                     </div>
                 ) : (
                     ""
                 )}
-
-                {/* {fields.length > 0 && (
-                    <div className="mt-6">
-                        <h3 className="font-medium text-gray-700 mb-2">Form Data</h3>
-                        <div className="bg-gray-900 text-green-400 p-3 rounded-lg text-xs overflow-auto max-h-32">
-                            <pre>{JSON.stringify(fields.map(f => ({
-                                id: f.id,
-                                type: f.type,
-                                label: f.label,
-                                placeholder: f.placeholder,
-                                options: f.options,
-                                value: f.value
-                            })), null, 2)}</pre>
-                        </div>
-                    </div>
-                )} */}
             </div>
-        </div>
+        </div >
     );
 };
 
