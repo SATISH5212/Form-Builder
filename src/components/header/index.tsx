@@ -1,5 +1,5 @@
 import { useRouter } from '@tanstack/react-router';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface FieldType {
@@ -58,7 +58,7 @@ const FormBuilder: React.FC = () => {
         e.preventDefault();
         if (!draggedFieldType || !canvasRef.current) return;
 
-        
+
         const canvasRect = canvasRef.current.getBoundingClientRect();
         const x = e.clientX - canvasRect.left;
         const y = e.clientY - canvasRect.top;
